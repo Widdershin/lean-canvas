@@ -4,11 +4,6 @@ import {run} from '@cycle/run';
 import xs from 'xstream';
 import Collection from '@cycle/collection';
 
-const drivers = {
-  DOM: makeDOMDriver('body'),
-  Time: timeDriver
-}
-
 function view (noteVtrees) {
   return (
     div('.canvas', {key: 'canvas'}, [
@@ -173,4 +168,16 @@ function applyKeys (vtree, parentKey = '', index = 0) {
   }
 }
 
-run(main, drivers)
+function start () {
+  const drivers = {
+    DOM: makeDOMDriver('.app'),
+    Time: timeDriver
+  }
+
+  run(main, drivers)
+}
+
+export {
+  start
+}
+
