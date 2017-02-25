@@ -4,12 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "budo index.ts --live -- -p tsify"
+    "start": "budo index.ts --live --css styles.css -- -p tsify"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@cycle/collection": "^0.5.1",
     "@cycle/dom": "^15.1.0",
     "@cycle/run": "^1.0.0",
     "@cycle/time": "^0.7.2",
