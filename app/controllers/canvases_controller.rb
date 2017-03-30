@@ -5,7 +5,7 @@ class CanvasesController < ApplicationController
   def create
     canvas = Canvas.create!
 
-    redirect_to canvases_url(canvas)
+    redirect_to action: :show, id: canvas.id
   end
 
   def show

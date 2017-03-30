@@ -1,8 +1,10 @@
 import {makeDOMDriver, div, img, h2, textarea} from '@cycle/dom';
+import {makeHTTPDriver} from '@cycle/http';
 import {timeDriver} from '@cycle/time';
 import {run} from '@cycle/run';
 import xs from 'xstream';
-import Collection from '@cycle/collection';
+import fromEvent from 'xstream/extra/fromEvent';
+import {RestCollection} from 'cycle-rest-collection/dist/rest';
 
 function view (noteVtrees) {
   return (
@@ -59,10 +61,21 @@ function view (noteVtrees) {
   );
 }
 
+function replace (newState) {
+  return state => newState;
+}
+
+function merge (newState) {
+  return state => ({...state, ...newState});
+}
+
 function Note (sources) {
-  function view ([position, text, editing]) {
+  function view ([state, editing, canvasDimensions]) {
+    const {x, y, text} = state;
+    const saving = 'tempId' in state;
+
     return (
-      div('.note', {style: {left: `${position.x - 35}px`, top: `${position.y - 35}px`}}, [
+      div('.note', {class: {saving}, style: {left: `${canvasDimensions.width * x - 35}px`, top: `${canvasDimensions.height * y - 35}px`}}, [
         editing ? textarea('.input', {}, text) : text
       ])
     );
@@ -80,11 +93,6 @@ function Note (sources) {
     .map(() => sources.mousePosition$.endWhen(mouseUp$))
     .flatten();
 
-  const position$ = xs.merge(
-    sources.position$,
-    mouseMove$
-  );
-
   const startEditing$ = sources.DOM
     .select('.note')
     .events('dblclick')
@@ -101,15 +109,22 @@ function Note (sources) {
     stopEditing$
   ).startWith(false);
 
-  const text$ = sources.DOM
+  const textChange$ = sources.DOM
     .select('.input')
     .events('change')
     .map(ev => ev.target.value)
-    .startWith('');
 
+  const reducer$ = xs.merge(
+    sources.state$.map(replace),
+    textChange$.map(text => ({text})).map(merge),
+    mouseMove$.map(merge)
+  );
+
+  const state$ = reducer$.fold((state, reducer: Function) => reducer(state), {text: '', x: 0, y: 0});
 
   return {
-    DOM: xs.combine(position$, text$, editing$).map(view)
+    DOM: xs.combine(state$, editing$, sources.dimensions$).map(view),
+    state$
   }
 }
 
@@ -117,26 +132,37 @@ function main (sources) {
   const documentSource = sources.DOM
     .select('document');
 
+  const dimensions$ = sources.Dimensions
+    .compose(sources.Time.throttleAnimation)
+    .remember()
+
   const dblClick$ = documentSource
     .events('dblclick');
 
   const mousePosition$ = documentSource
     .events('mousemove')
     .compose(sources.Time.throttleAnimation)
-    .map(ev => ({x: ev.clientX, y: ev.clientY}));
+    .map(ev => ({x: ev.clientX / window.innerWidth, y: ev.clientY / window.innerHeight}))
+    .remember();
 
-  const addNote$ = mousePosition$
-    .map(mousePosition => dblClick$.mapTo({position$: xs.of(mousePosition)}))
-    .flatten();
+  const add$ = mousePosition$
+    .map(mousePosition => dblClick$.mapTo({state$: xs.of({...mousePosition, text: ''})}))
+    .flatten()
 
-  const noteSources = {...sources, mousePosition$};
+  const noteSources = {...sources, mousePosition$, dimensions$, add$};
 
-  const notes$ = Collection(Note, noteSources, addNote$);
+  const notes = RestCollection(
+    Note,
+    noteSources,
+    [location.href, 'notes'].join('/')
+  );
 
-  const notesDOM$ = Collection.pluck(notes$, note => note.DOM)
+  const notesDOM$ = notes.pluck(note => note.DOM).debug(a => console.log(a.length))
+  const noteUpdateRequest$ = notes.HTTP
 
   return {
-    DOM: notesDOM$.map(view).map(applyKeys)
+    DOM: notesDOM$.map(view).map(applyKeys),
+    HTTP: noteUpdateRequest$
   }
 }
 
@@ -168,10 +194,44 @@ function applyKeys (vtree, parentKey = '', index = 0) {
   }
 }
 
-function start () {
+function railsify (httpDriver, token) {
+  function applyToken (request) {
+    const headers = request.headers || {};
+
+    return {
+      ...request,
+
+      headers: {
+        ...request.headers,
+
+        'X-CSRF-Token': token
+      }
+    }
+  }
+
+  return function driver (sink$) {
+    const sinkWithToken$ = sink$.map(applyToken)
+    .debug('requrest')
+
+    return httpDriver(sinkWithToken$);
+  }
+}
+
+function resizeDriver () {
+  const dimensions$ = fromEvent(window, 'resize')
+    .map(ev => ({width: window.innerWidth, height: window.innerHeight}))
+    .startWith({width: window.innerWidth, height: window.innerHeight})
+    .remember();
+
+  return dimensions$;
+}
+
+function start (token) {
   const drivers = {
     DOM: makeDOMDriver('.app'),
-    Time: timeDriver
+    HTTP: railsify(makeHTTPDriver(), token),
+    Time: timeDriver,
+    Dimensions: resizeDriver
   }
 
   run(main, drivers)

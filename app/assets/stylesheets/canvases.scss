@@ -70,15 +70,15 @@ html, body {
   height: 70px;
   padding: 5px;
   background: skyblue;
-  box-shadow: 1px 1px 2px 0px #ddd;
-  font-size: 0.55em;
+  box-shadow: 1px 1px 2px 0px #888;
+  font-size: 0.7em;
   color: #222;
 }
 
 .input {
   width: 94%;
   height: 94%;
-  font-size: 0.7em;
+  font-size: 0.8em;
 }
 
 .number {
@@ -89,4 +89,8 @@ html, body {
   text-align: center;
   left: 50%;
   top: 30%;
+}
+
+.saving {
+  background: red;
 }
