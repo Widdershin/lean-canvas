@@ -157,7 +157,7 @@ function main (sources) {
     [location.href, 'notes'].join('/')
   );
 
-  const notesDOM$ = notes.pluck(note => note.DOM).debug(a => console.log(a.length))
+  const notesDOM$ = notes.pluck(note => note.DOM)
   const noteUpdateRequest$ = notes.HTTP
 
   return {
