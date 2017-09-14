@@ -14,13 +14,14 @@
     "@cycle/http": "^14.3.0",
     "@cycle/run": "^3.2.0",
     "@cycle/time": "^0.10.0",
+    "browserify": "^14.4.0",
     "cycle-rest-collection": "git://github.com/widdershin/cycle-rest-collection.git",
-    "xstream": "^10.9.0"
+    "xstream": "^10.9.0",
+    "tsify": "^3.0.3",
+    "typescript": "^2.5.2"
   },
   "devDependencies": {
     "browserify-incremental": "^3.1.1",
-    "budo": "^9.4.7",
-    "tsify": "^3.0.3",
-    "typescript": "^2.5.2"
+    "budo": "^9.4.7"
   }
 }
